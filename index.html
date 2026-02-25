@@ -543,6 +543,40 @@
 
   /* Mini sparklines */
   .sparkline { display: block; }
+
+  /* ── Source badges (ToA / Tg) ── */
+  .src-badge {
+    font-size: 9px; font-weight: 700;
+    padding: 1px 5px; border-radius: 3px;
+    letter-spacing: .5px; white-space: nowrap; flex-shrink: 0;
+  }
+  .src-badge.toa { background: rgba(139,92,246,.25); color: var(--purple); }
+  .src-badge.tg  { background: rgba(59,158,255,.15); color: var(--blue); }
+
+  /* Inline ticker badge */
+  .src-badge-sm {
+    font-size: 8px; font-weight: 700;
+    padding: 1px 4px; border-radius: 2px; flex-shrink: 0;
+  }
+  .src-badge-sm.toa { background: rgba(139,92,246,.2); color: var(--purple); }
+  .src-badge-sm.tg  { background: rgba(59,158,255,.12); color: var(--blue); }
+
+  /* ── Sentiment pill on each news card ── */
+  .sent-badge {
+    margin-left: auto; font-size: 9px; font-weight: 700;
+    padding: 1px 6px; border-radius: 3px; letter-spacing: .3px;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .sent-badge.bull { background: var(--green-dim); color: var(--green); }
+  .sent-badge.bear { background: var(--red-dim);   color: var(--red);   }
+  .sent-badge.neut { background: var(--blue-dim);  color: var(--blue);  }
+
+  /* Loading placeholder */
+  .feed-loading {
+    padding: 24px 12px; text-align: center;
+    color: var(--text-muted); font-size: 11px; line-height: 1.8;
+  }
+  .feed-loading span { display: block; font-size: 9px; margin-top: 4px; color: var(--text-muted); }
 </style>
 </head>
 <body>
@@ -708,82 +742,339 @@
 </div>
 
 <script>
-// ─── DATA ──────────────────────────────────────────────────────────
+// ─── STATIC DATA ──────────────────────────────────────────────────
 const MARKETS = [
-  { sym: 'BTC', name: 'Bitcoin', price: 67987, change: +0.43 },
-  { sym: 'ETH', name: 'Ethereum', price: 3180, change: +0.62 },
-  { sym: 'SOL', name: 'Solana', price: 84.97, change: +0.79 },
-  { sym: 'BNB', name: 'BNB', price: 412, change: +1.2 },
-  { sym: 'XRP', name: 'Ripple', price: 1.42, change: -0.18 },
-  { sym: 'ADA', name: 'Cardano', price: 0.612, change: -1.04 },
-  { sym: 'AVAX', name: 'Avalanche', price: 38.7, change: +2.3 },
-  { sym: 'DOGE', name: 'Dogecoin', price: 0.0973, change: -0.08 },
-  { sym: 'LINK', name: 'Chainlink', price: 19.4, change: +3.1 },
-  { sym: 'DOT', name: 'Polkadot', price: 9.18, change: -0.94 },
-  { sym: 'MATIC', name: 'Polygon', price: 1.04, change: -2.1 },
-  { sym: 'UNI', name: 'Uniswap', price: 10.8, change: +1.6 },
-  { sym: 'ATOM', name: 'Cosmos', price: 11.3, change: +0.4 },
-  { sym: 'LTC', name: 'Litecoin', price: 86.2, change: -0.62 },
-  { sym: 'APT', name: 'Aptos', price: 14.6, change: +4.2 },
-  { sym: 'ARB', name: 'Arbitrum', price: 1.98, change: -1.3 },
-];
-
-const NEWS_DATA = [
-  { id:1, source:'CoinTelegraph', category:'markets', headline:'BlackRock Bitcoin ETF hits record $18.2B AUM as institutional demand surges', coins:['BTC','ETH'], sentiment:'bull', age:'2m', fresh:true },
-  { id:2, source:'The Block', category:'btc', headline:'CryptoQuant: Whale deposit activity grows amid ongoing bear phase — selling pressure mounting', coins:['BTC'], sentiment:'bear', age:'5m', fresh:false },
-  { id:3, source:'Decrypt', category:'defi', headline:'Uniswap V4 deployment confirmed for Q1 2026 on all major L2 networks', coins:['UNI','ETH','ARB'], sentiment:'bull', age:'12m', fresh:false },
-  { id:4, source:'Reuters', category:'macro', headline:'Fed holds rates steady; Powell signals two cuts possible in H2 2026', coins:['BTC'], sentiment:'bull', age:'18m', fresh:false },
-  { id:5, source:'CoinDesk', category:'sec', headline:'SEC approves spot Ethereum ETF options trading beginning March 3rd', coins:['ETH'], sentiment:'bull', age:'24m', fresh:false },
-  { id:6, source:'Finance Feeds', category:'sec', headline:'IoTeX investigates token safe breach after $4.3M wallet drain — IOTX down 12%', coins:['IOTX'], sentiment:'bear', age:'35m', fresh:false },
-  { id:7, source:'Blockworks', category:'defi', headline:'Solana DEX volume surpasses Ethereum for third consecutive month', coins:['SOL','ETH'], sentiment:'bull', age:'41m', fresh:false },
-  { id:8, source:'CoinTelegraph', category:'markets', headline:'Grayscale files for new crypto basket ETF including BNB, SOL, XRP', coins:['BNB','SOL','XRP'], sentiment:'bull', age:'55m', fresh:false },
-  { id:9, source:'The Block', category:'macro', headline:'CPI data shows inflation at 2.8% — below expectations, risk assets rally', coins:['BTC','ETH'], sentiment:'bull', age:'1h', fresh:false },
-  { id:10, source:'Decrypt', category:'sec', headline:'Binance settles CFTC charges for $2.7B — shares rise post announcement', coins:['BNB'], sentiment:'neut', age:'1.5h', fresh:false },
+  { sym:'BTC',  name:'Bitcoin',   price:67987, change:+0.43 },
+  { sym:'ETH',  name:'Ethereum',  price:3180,  change:+0.62 },
+  { sym:'SOL',  name:'Solana',    price:84.97, change:+0.79 },
+  { sym:'BNB',  name:'BNB',       price:412,   change:+1.2  },
+  { sym:'XRP',  name:'Ripple',    price:1.42,  change:-0.18 },
+  { sym:'ADA',  name:'Cardano',   price:0.612, change:-1.04 },
+  { sym:'AVAX', name:'Avalanche', price:38.7,  change:+2.3  },
+  { sym:'DOGE', name:'Dogecoin',  price:0.0973,change:-0.08 },
+  { sym:'LINK', name:'Chainlink', price:19.4,  change:+3.1  },
+  { sym:'DOT',  name:'Polkadot',  price:9.18,  change:-0.94 },
+  { sym:'MATIC',name:'Polygon',   price:1.04,  change:-2.1  },
+  { sym:'UNI',  name:'Uniswap',   price:10.8,  change:+1.6  },
+  { sym:'ATOM', name:'Cosmos',    price:11.3,  change:+0.4  },
+  { sym:'LTC',  name:'Litecoin',  price:86.2,  change:-0.62 },
+  { sym:'APT',  name:'Aptos',     price:14.6,  change:+4.2  },
+  { sym:'ARB',  name:'Arbitrum',  price:1.98,  change:-1.3  },
 ];
 
 const SIGNALS = [
-  { sym:'XAUT', exchange:'8bit', type:'vol', label:'Vol Spike', desc:'Volume rate 33.7x above 10min avg ($658.3K in 30s)', severity:'high', time:'45m' },
-  { sym:'PAXG', exchange:'Binance', type:'vol', label:'Vol Ignition', desc:'Volume IGNITION 76x rate spike ($1.0M in 30s)', severity:'high', time:'51m' },
-  { sym:'BOBA', exchange:'8bit', type:'oi', label:'OI Diverge', desc:'OI +6.4% while price -1.1% over 10min', severity:'med', time:'55m' },
-  { sym:'ZAMA', exchange:'8bit', type:'vol', label:'Vol Ignition', desc:'Volume IGNITION 84x rate spike ($197.5K in 30s)', severity:'high', time:'55m' },
-  { sym:'RONIN', exchange:'Binance', type:'vol', label:'Vol Ignition', desc:'Volume IGNITION 128x rate spike ($114.6K in 30s)', severity:'high', time:'56m' },
-  { sym:'ARB', exchange:'Binance', type:'liq', label:'Liq Cluster', desc:'$4.2M long liquidations clustered at $1.92', severity:'high', time:'58m' },
-  { sym:'ETH', exchange:'Binance', type:'oi', label:'OI Surge', desc:'Open Interest surged 8.4% in 10 minutes', severity:'med', time:'1h' },
-  { sym:'SOL', exchange:'Binance', type:'vol', label:'Vol Spike', desc:'Volume 12.3x above 30min average ($22M in 5m)', severity:'med', time:'1h' },
+  { sym:'XAUT',  exchange:'8bit',   type:'vol', label:'Vol Spike',    desc:'Volume rate 33.7x above 10min avg ($658.3K in 30s)', severity:'high', time:'45m' },
+  { sym:'PAXG',  exchange:'Binance',type:'vol', label:'Vol Ignition', desc:'Volume IGNITION 76x rate spike ($1.0M in 30s)',       severity:'high', time:'51m' },
+  { sym:'BOBA',  exchange:'8bit',   type:'oi',  label:'OI Diverge',   desc:'OI +6.4% while price -1.1% over 10min',              severity:'med',  time:'55m' },
+  { sym:'ZAMA',  exchange:'8bit',   type:'vol', label:'Vol Ignition', desc:'Volume IGNITION 84x rate spike ($197.5K in 30s)',     severity:'high', time:'55m' },
+  { sym:'RONIN', exchange:'Binance',type:'vol', label:'Vol Ignition', desc:'Volume IGNITION 128x rate spike ($114.6K in 30s)',    severity:'high', time:'56m' },
+  { sym:'ARB',   exchange:'Binance',type:'liq', label:'Liq Cluster',  desc:'$4.2M long liquidations clustered at $1.92',         severity:'high', time:'58m' },
+  { sym:'ETH',   exchange:'Binance',type:'oi',  label:'OI Surge',     desc:'Open Interest surged 8.4% in 10 minutes',            severity:'med',  time:'1h'  },
+  { sym:'SOL',   exchange:'Binance',type:'vol', label:'Vol Spike',    desc:'Volume 12.3x above 30min average ($22M in 5m)',      severity:'med',  time:'1h'  },
 ];
 
 const FLOWS = [
   { sym:'BTC', direction:'out', amount:'$48.2M', pct:90 },
   { sym:'ETH', direction:'out', amount:'$22.1M', pct:65 },
-  { sym:'SOL', direction:'in', amount:'$8.4M', pct:40 },
-  { sym:'BNB', direction:'out', amount:'$6.7M', pct:35 },
-  { sym:'XRP', direction:'in', amount:'$3.2M', pct:20 },
-  { sym:'DOGE', direction:'out', amount:'$1.8M', pct:15 },
-];
-
-const TICKER_ITEMS = [
-  { text:'BlackRock Bitcoin ETF records $18.2B AUM — all-time high', tag:'BULL' },
-  { text:'SEC approves spot ETH ETF options — effective March 3rd', tag:'BULL' },
-  { text:'Fed holds rates; signals 2 cuts in H2 2026', tag:'BULL' },
-  { text:'IoTeX $4.3M wallet breach — IOTX -12%', tag:'BEAR' },
-  { text:'CryptoQuant: whale deposits increasing — selling pressure ahead', tag:'BEAR' },
-  { text:'Uniswap V4 deploying Q1 2026 on all major L2s', tag:'BULL' },
-  { text:'Binance settles CFTC for $2.7B — markets react neutrally', tag:'NEUT' },
-  { text:'Solana DEX volume surpasses Ethereum for 3rd month running', tag:'BULL' },
-  { text:'CPI 2.8% — below expectations, risk assets rallying', tag:'BULL' },
+  { sym:'SOL', direction:'in',  amount:'$8.4M',  pct:40 },
+  { sym:'BNB', direction:'out', amount:'$6.7M',  pct:35 },
+  { sym:'XRP', direction:'in',  amount:'$3.2M',  pct:20 },
+  { sym:'DOGE',direction:'out', amount:'$1.8M',  pct:15 },
 ];
 
 const ALERTS = [
-  { icon:'🔔', text:'BTC above $68,000 — take-profit zone reached', time:'just now', color:'var(--amber)' },
-  { icon:'⚠️', text:'ETH funding rate flipped negative on Binance', time:'3m ago', color:'var(--red)' },
-  { icon:'📊', text:'BTC 1h RSI entering overbought (72.4)', time:'8m ago', color:'var(--blue)' },
-  { icon:'🐋', text:'Whale alert: 1,200 BTC moved to exchange', time:'15m ago', color:'var(--red)' },
+  { icon:'🔔', text:'BTC above $68,000 — take-profit zone reached',    time:'just now', color:'var(--amber)' },
+  { icon:'⚠️', text:'ETH funding rate flipped negative on Binance',     time:'3m ago',   color:'var(--red)'   },
+  { icon:'📊', text:'BTC 1h RSI entering overbought (72.4)',            time:'8m ago',   color:'var(--blue)'  },
+  { icon:'🐋', text:'Whale alert: 1,200 BTC moved to exchange',         time:'15m ago',  color:'var(--red)'   },
 ];
 
-// ─── RENDER MARKETS ──────────────────────────────────────────────
+// ─── SENTIMENT SCORING ENGINE ─────────────────────────────────────
+const BULL_KW = [
+  'bullish','surge','surges','rally','rallies','soar','soars','gain','gains',
+  'rise','rises','record','high','approve','approves','approved','launch',
+  'launches','partnership','adoption','etf','institutional','accumulate',
+  'upgrade','upgrades','growth','positive','optimistic','buy','buys',
+  'profit','ath','milestone','wins','pump','pumps','green','bull',
+  'recover','recovery','breakout','inflow','listing','listed',
+];
+const BEAR_KW = [
+  'bearish','drop','drops','crash','crashes','fall','falls','low','hack',
+  'hacked','breach','exploit','exploited','drain','drains','investigation',
+  'ban','banned','lawsuit','fine','fined','liquidation','liquidated',
+  'selling pressure','bear','decline','declines','plunge','plunges',
+  'dump','dumps','loss','losses','warning','risk','attack','attacked',
+  'stolen','theft','charges','arrested','seized','collapses','collapse',
+  'outflow','delist','delisted','down','decrease','negative','scam',
+];
+
+function scoreSentiment(text) {
+  const t = text.toLowerCase();
+  let b = 0, r = 0;
+  BULL_KW.forEach(k => { if (t.includes(k)) b++; });
+  BEAR_KW.forEach(k => { if (t.includes(k)) r++; });
+  const total = b + r;
+  if (total === 0) return { label:'neut', pct:50 };
+  const pct = Math.round((b / total) * 100);
+  if (pct >= 60) return { label:'bull', pct };
+  if (pct <= 40) return { label:'bear', pct: 100 - pct };
+  return { label:'neut', pct:50 };
+}
+
+// ─── COIN / ASSET DETECTION ───────────────────────────────────────
+const COIN_MAP = {
+  bitcoin:'BTC',  btc:'BTC',
+  ethereum:'ETH', eth:'ETH', ether:'ETH',
+  solana:'SOL',   sol:'SOL',
+  ripple:'XRP',   xrp:'XRP',
+  dogecoin:'DOGE',doge:'DOGE',
+  cardano:'ADA',  ada:'ADA',
+  avalanche:'AVAX',avax:'AVAX',
+  chainlink:'LINK',
+  polkadot:'DOT',
+  uniswap:'UNI',  uni:'UNI',
+  cosmos:'ATOM',  atom:'ATOM',
+  litecoin:'LTC', ltc:'LTC',
+  aptos:'APT',
+  arbitrum:'ARB', arb:'ARB',
+  bnb:'BNB',
+  iotex:'IOTX',   iotx:'IOTX',
+  zcash:'ZEC',    zec:'ZEC',
+  celo:'CELO',
+  aave:'AAVE',
+  near:'NEAR',
+  sui:'SUI',
+  injective:'INJ',inj:'INJ',
+  pepe:'PEPE',
+  shiba:'SHIB',   shib:'SHIB',
+  polygon:'MATIC',matic:'MATIC',
+  tron:'TRX',     trx:'TRX',
+  ton:'TON',
+  maker:'MKR',    mkr:'MKR',
+  compound:'COMP',
+  ronin:'RON',
+  sei:'SEI',
+  kaspa:'KAS',    kas:'KAS',
+  'fetch.ai':'FET',fet:'FET',
+  render:'RNDR',  rndr:'RNDR',
+  bonk:'BONK',
+  wif:'WIF',
+  safe:'SAFE',
+  optimism:'OP',
+};
+
+function detectCoins(text) {
+  const found = new Set();
+  // $TICKER pattern (highest confidence)
+  (text.match(/\$([A-Z]{2,8})/g) || []).forEach(tk => found.add(tk.slice(1)));
+  // Keyword matching
+  const lower = text.toLowerCase();
+  Object.entries(COIN_MAP).forEach(([key, val]) => {
+    const esc = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (new RegExp('(?<![a-z])' + esc + '(?![a-z])', 'i').test(lower)) found.add(val);
+  });
+  return [...found].slice(0, 5);
+}
+
+// ─── LIVE NEWS STORE ──────────────────────────────────────────────
+const liveNews = [];
+const MAX_NEWS  = 60;
+
+function addNewsItem(item) {
+  if (liveNews.find(n => n.id === item.id)) return; // dedupe
+  // Remove the initial loading placeholder
+  const loadIdx = liveNews.findIndex(n => n.id === '__loading__');
+  if (loadIdx !== -1) liveNews.splice(loadIdx, 1);
+  liveNews.unshift(item);
+  liveNews.sort((a, b) => b.ts - a.ts);
+  if (liveNews.length > MAX_NEWS) liveNews.length = MAX_NEWS;
+  renderNews();
+  updateTicker();
+  updateSentiment();
+}
+
+function formatAge(ts) {
+  const d = Date.now() - ts;
+  if (d < 60000)    return 'just now';
+  if (d < 3600000)  return Math.floor(d / 60000)   + 'm ago';
+  if (d < 86400000) return Math.floor(d / 3600000)  + 'h ago';
+  return Math.floor(d / 86400000) + 'd ago';
+}
+
+// ─── TREE OF ALPHA WEBSOCKET ──────────────────────────────────────
+let toaWs = null;
+
+function connectTreeOfAlpha() {
+  try { toaWs = new WebSocket('wss://news.treeofalpha.com/ws'); }
+  catch (e) { setTimeout(connectTreeOfAlpha, 8000); return; }
+
+  toaWs.onopen  = () => console.log('[ToA] connected');
+  toaWs.onerror = () => {};
+  toaWs.onclose = () => setTimeout(connectTreeOfAlpha, 5000);
+
+  toaWs.onmessage = (evt) => {
+    try {
+      const d = JSON.parse(evt.data);
+      const text = (d.title || d.body || '').trim();
+      if (!text) return;
+      const sent  = scoreSentiment(text);
+      const coins = (d.coins && d.coins.length) ? d.coins : detectCoins(text);
+      addNewsItem({
+        id:          d._id || ('toa-' + (d.time || Date.now())),
+        sourceType:  'ToA',
+        sourceLabel: (d.source || 'ToA').replace(/_/g, ' '),
+        headline:    text.substring(0, 280),
+        coins,
+        sentiment:   sent.label,
+        sentPct:     sent.pct,
+        ts:          d.time   || Date.now(),
+        fresh:       true,
+      });
+    } catch (e) { /* malformed */ }
+  };
+}
+
+// ─── TELEGRAM RSS (RSSHub + CORS proxy) ───────────────────────────
+const TG_CHANNELS = [
+  { handle:'solidintelx',     label:'@SolidIntelX'    },
+  { handle:'walterbloomberg', label:'@WalterBloomberg' },
+  { handle:'whale_alert_io',  label:'@Whale_Alert'     },
+  { handle:'BWEnews',         label:'@BWEnews'         },
+  { handle:'financefeeds',    label:'@FinanceFeeds'    },
+];
+
+const PROXY       = 'https://api.allorigins.win/raw?url=';
+const seenTgGuids = new Set();
+
+async function fetchChannel(ch) {
+  const rss = `https://rsshub.app/telegram/channel/${ch.handle}`;
+  try {
+    const res = await fetch(PROXY + encodeURIComponent(rss),
+                            { signal: AbortSignal.timeout(12000) });
+    if (!res.ok) return;
+    const doc   = new DOMParser().parseFromString(await res.text(), 'text/xml');
+    const items = [...doc.querySelectorAll('item')];
+
+    items.slice(0, 12).forEach(item => {
+      const guid = item.querySelector('guid')?.textContent ||
+                   (ch.handle + '-' + Math.random());
+      if (seenTgGuids.has(guid)) return;
+      seenTgGuids.add(guid);
+
+      // Strip HTML from description
+      const tmp = document.createElement('div');
+      tmp.innerHTML = item.querySelector('description')?.textContent || '';
+      const rawTitle = item.querySelector('title')?.textContent || '';
+      const text = (rawTitle || tmp.textContent || '').trim().substring(0, 280);
+      if (!text) return;
+
+      const pubDate = item.querySelector('pubDate')?.textContent;
+      const ts      = pubDate ? new Date(pubDate).getTime() : Date.now();
+      const sent    = scoreSentiment(text);
+      const coins   = detectCoins(text);
+
+      addNewsItem({
+        id:          guid,
+        sourceType:  'Tg',
+        sourceLabel: ch.label,
+        headline:    text,
+        coins,
+        sentiment:   sent.label,
+        sentPct:     sent.pct,
+        ts,
+        fresh:       (Date.now() - ts) < 180000,
+      });
+    });
+  } catch (e) {
+    console.warn('[Tg] fetch failed:', ch.handle, e.message);
+  }
+}
+
+function pollTelegram() {
+  // Stagger requests 2 s apart to be proxy-friendly
+  TG_CHANNELS.forEach((ch, i) => setTimeout(() => fetchChannel(ch), i * 2000));
+}
+
+// ─── RENDER NEWS ──────────────────────────────────────────────────
+function renderNews() {
+  const feed = document.getElementById('newsFeed');
+
+  if (liveNews.length === 0 || (liveNews.length === 1 && liveNews[0].id === '__loading__')) {
+    feed.innerHTML = `<div class="feed-loading">
+      Connecting to live feeds…
+      <span>Tree of Alpha WS · @SolidIntelX · @WalterBloomberg<br>@Whale_Alert · @BWEnews · @FinanceFeeds</span>
+    </div>`;
+    document.getElementById('newsCount').textContent = '0 items';
+    return;
+  }
+
+  const sentLabel = { bull:'BULL', bear:'BEAR', neut:'NEUT' };
+  feed.innerHTML = liveNews
+    .filter(n => n.id !== '__loading__')
+    .map(n => {
+      const badge = n.sourceType === 'ToA'
+        ? `<span class="src-badge toa">ToA</span>`
+        : `<span class="src-badge tg">Tg</span>`;
+      const coins = n.coins && n.coins.length
+        ? `<div class="news-coins">${n.coins.map(c => `<span class="coin-tag">$${c}</span>`).join('')}</div>`
+        : '';
+      return `
+        <div class="news-item ${n.sentiment} ${n.fresh ? 'new-item' : ''}">
+          <div class="news-meta">
+            ${badge}
+            <span class="news-source">${n.sourceLabel}</span>
+            <span class="news-age">${formatAge(n.ts)}</span>
+            <span class="sent-badge ${n.sentiment}">${sentLabel[n.sentiment]} ${n.sentPct}%</span>
+          </div>
+          <div class="news-headline">${n.headline}</div>
+          ${coins}
+        </div>`;
+    }).join('');
+
+  const count = liveNews.filter(n => n.id !== '__loading__').length;
+  document.getElementById('newsCount').textContent = count + ' items';
+}
+
+// ─── LIVE TICKER (uses liveNews) ──────────────────────────────────
+function updateTicker() {
+  const inner = document.getElementById('tickerInner');
+  const items = liveNews.filter(n => n.id !== '__loading__').slice(0, 16);
+  if (items.length === 0) return;
+  const doubled = [...items, ...items];
+  inner.innerHTML = doubled.map(n => {
+    const srcCls = n.sourceType === 'ToA' ? 'toa' : 'tg';
+    const coins  = n.coins.map(c =>
+      `<span style="color:var(--amber);font-family:'JetBrains Mono',monospace;font-size:9px;margin-left:3px;">$${c}</span>`
+    ).join('');
+    return `
+      <div class="ticker-item">
+        <span class="tag ${n.sentiment}">${n.sentiment.toUpperCase()}</span>
+        <span class="src-badge-sm ${srcCls}">${n.sourceType}</span>
+        <span>${n.headline.substring(0, 110)}</span>
+        ${coins}
+        <span style="color:var(--border-bright);margin:0 12px;">◆</span>
+      </div>`;
+  }).join('');
+}
+
+// ─── AGGREGATE SENTIMENT BAR ──────────────────────────────────────
+function updateSentiment() {
+  const real = liveNews.filter(n => n.id !== '__loading__');
+  if (real.length === 0) return;
+  const bulls = real.filter(n => n.sentiment === 'bull').length;
+  const bears = real.filter(n => n.sentiment === 'bear').length;
+  const total = bulls + bears || 1;
+  const bull  = Math.round((bulls / total) * 100);
+  const bear  = 100 - bull;
+  document.getElementById('sentBull').style.width    = bull + '%';
+  document.getElementById('sentBear').style.width    = bear + '%';
+  document.getElementById('sentBullPct').textContent = bull + '% Bull';
+  document.getElementById('sentBearPct').textContent = bear + '% Bear';
+}
+
+// ─── RENDER MARKETS ───────────────────────────────────────────────
 function renderMarkets() {
-  const list = document.getElementById('marketsList');
-  list.innerHTML = MARKETS.map((m, i) => `
+  document.getElementById('marketsList').innerHTML = MARKETS.map((m, i) => `
     <div class="market-row ${i===0?'active':''}" onclick="selectMarket(this,'${m.sym}')">
       <div>
         <div class="market-symbol">${m.sym}/USDT</div>
@@ -791,37 +1082,17 @@ function renderMarkets() {
       </div>
       <div class="market-price">$${m.price.toLocaleString()}</div>
       <div class="market-change ${m.change>=0?'pos':'neg'}">${m.change>=0?'+':''}${m.change}%</div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
-
-function selectMarket(el, sym) {
+function selectMarket(el) {
   document.querySelectorAll('.market-row').forEach(r => r.classList.remove('active'));
   el.classList.add('active');
 }
 
-// ─── RENDER NEWS ─────────────────────────────────────────────────
-function renderNews() {
-  const feed = document.getElementById('newsFeed');
-  const catColor = { markets:'markets', defi:'defi', btc:'btc', sec:'sec', macro:'macro' };
-  feed.innerHTML = NEWS_DATA.map(n => `
-    <div class="news-item ${n.sentiment} ${n.fresh?'new-item':''}">
-      <div class="news-meta">
-        <span class="news-source">${n.source}</span>
-        <span class="news-category ${catColor[n.category]}">${n.category.toUpperCase()}</span>
-        <span class="news-age">${n.age} ago</span>
-      </div>
-      <div class="news-headline">${n.headline}</div>
-      <div class="news-coins">${n.coins.map(c=>`<span class="coin-tag">$${c}</span>`).join('')}</div>
-    </div>
-  `).join('');
-  document.getElementById('newsCount').textContent = NEWS_DATA.length + ' items';
-}
-
-// ─── RENDER SIGNALS ──────────────────────────────────────────────
+// ─── RENDER SIGNALS ───────────────────────────────────────────────
 let scanFilter = 'all';
 function renderSignals() {
-  const filtered = scanFilter === 'all' ? SIGNALS : SIGNALS.filter(s=>s.type===scanFilter);
+  const filtered = scanFilter === 'all' ? SIGNALS : SIGNALS.filter(s => s.type === scanFilter);
   document.getElementById('signalList').innerHTML = filtered.map(s => `
     <div class="signal-item">
       <div class="signal-dot ${s.severity}"></div>
@@ -834,14 +1105,12 @@ function renderSignals() {
         </div>
         <div class="signal-desc">${s.desc}</div>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
   document.getElementById('scanCount').textContent = filtered.length + ' active';
 }
-
 function filterScanner(filter, el) {
   scanFilter = filter;
-  document.querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   renderSignals();
 }
@@ -854,8 +1123,7 @@ function renderFlow() {
       <div class="flow-sym">${f.sym}</div>
       <div class="flow-bar-container"><div class="flow-bar ${f.direction}" style="width:${f.pct}%"></div></div>
       <div class="flow-amount" style="color:${f.direction==='out'?'var(--red)':'var(--green)'};">${f.amount}</div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 // ─── RENDER ALERTS ────────────────────────────────────────────────
@@ -865,194 +1133,169 @@ function renderAlerts() {
       <span class="alert-icon">${a.icon}</span>
       <span class="alert-text" style="border-left:2px solid ${a.color};padding-left:6px;">${a.text}</span>
       <span class="alert-time">${a.time}</span>
-    </div>
-  `).join('');
-}
-
-// ─── TICKER ───────────────────────────────────────────────────────
-function renderTicker() {
-  const inner = document.getElementById('tickerInner');
-  // Repeat for seamless scroll
-  const items = [...TICKER_ITEMS, ...TICKER_ITEMS];
-  inner.innerHTML = items.map(t => `
-    <div class="ticker-item">
-      <span class="tag ${t.tag.toLowerCase()}">${t.tag}</span>
-      <span>${t.text}</span>
-      <span style="color:var(--border-bright);margin:0 8px;">◆</span>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 // ─── CHART (CANVAS) ───────────────────────────────────────────────
 function drawChart() {
   const canvas = document.getElementById('chart');
-  const area = canvas.parentElement;
-  canvas.width = area.clientWidth;
+  const area   = canvas.parentElement;
+  canvas.width  = area.clientWidth;
   canvas.height = area.clientHeight;
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   const PAD = { top:40, right:70, bottom:30, left:10 };
 
-  // Generate fake candles
-  const N = 80;
-  const candles = [];
+  const N = 80, candles = [];
   let price = 67000;
-  for(let i=0;i<N;i++){
-    const open = price;
-    const change = (Math.random()-0.48)*800;
-    const close = open + change;
-    const hi = Math.max(open,close) + Math.random()*300;
-    const lo = Math.min(open,close) - Math.random()*300;
-    candles.push({open,close,hi,lo,vol:Math.random()*100+20});
+  for (let i = 0; i < N; i++) {
+    const open   = price;
+    const change = (Math.random() - 0.48) * 800;
+    const close  = open + change;
+    candles.push({ open, close,
+      hi: Math.max(open,close) + Math.random()*300,
+      lo: Math.min(open,close) - Math.random()*300,
+      vol: Math.random()*100+20 });
     price = close;
   }
 
-  const prices = candles.flatMap(c=>[c.hi,c.lo]);
-  const minP = Math.min(...prices)*0.999;
-  const maxP = Math.max(...prices)*1.001;
-  const scaleY = p => PAD.top + (1-(p-minP)/(maxP-minP))*(H-PAD.top-PAD.bottom);
+  const prices = candles.flatMap(c => [c.hi, c.lo]);
+  const minP   = Math.min(...prices) * 0.999;
+  const maxP   = Math.max(...prices) * 1.001;
+  const scaleY = p => PAD.top + (1 - (p - minP) / (maxP - minP)) * (H - PAD.top - PAD.bottom);
+  const cW     = (W - PAD.left - PAD.right) / N;
+  const bodyW  = Math.max(cW * 0.6, 2);
 
-  const cW = (W-PAD.left-PAD.right)/N;
-  const bodyW = Math.max(cW*0.6, 2);
-
-  // Grid
-  ctx.strokeStyle = 'rgba(30,45,66,0.6)';
-  ctx.lineWidth = 1;
-  for(let i=0;i<6;i++){
-    const y = PAD.top + i*(H-PAD.top-PAD.bottom)/5;
-    ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(W-PAD.right,y); ctx.stroke();
-    const pLabel = maxP - i*(maxP-minP)/5;
-    ctx.fillStyle='rgba(122,148,176,0.6)';
-    ctx.font='10px JetBrains Mono';
-    ctx.fillText(pLabel.toFixed(0), W-PAD.right+6, y+4);
+  ctx.strokeStyle = 'rgba(30,45,66,0.6)'; ctx.lineWidth = 1;
+  for (let i = 0; i < 6; i++) {
+    const y = PAD.top + i * (H - PAD.top - PAD.bottom) / 5;
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(122,148,176,0.6)';
+    ctx.font = '10px JetBrains Mono';
+    ctx.fillText((maxP - i * (maxP - minP) / 5).toFixed(0), W - PAD.right + 6, y + 4);
   }
 
-  // Volume bars
-  const volMax = Math.max(...candles.map(c=>c.vol));
-  const volH = (H-PAD.top-PAD.bottom)*0.15;
-  candles.forEach((c,i)=>{
-    const x = PAD.left + i*cW;
-    const bH = (c.vol/volMax)*volH;
-    const bull = c.close >= c.open;
-    ctx.fillStyle = bull ? 'rgba(0,229,160,0.25)' : 'rgba(255,64,96,0.25)';
-    ctx.fillRect(x+cW*0.1, H-PAD.bottom-bH, cW*0.8, bH);
+  const volMax = Math.max(...candles.map(c => c.vol));
+  const volH   = (H - PAD.top - PAD.bottom) * 0.15;
+  candles.forEach((c, i) => {
+    const x  = PAD.left + i * cW;
+    const bH = (c.vol / volMax) * volH;
+    ctx.fillStyle = c.close >= c.open ? 'rgba(0,229,160,0.25)' : 'rgba(255,64,96,0.25)';
+    ctx.fillRect(x + cW * 0.1, H - PAD.bottom - bH, cW * 0.8, bH);
   });
 
-  // Candles
-  candles.forEach((c,i) => {
-    const x = PAD.left + i*cW + cW/2;
+  candles.forEach((c, i) => {
+    const x    = PAD.left + i * cW + cW / 2;
     const bull = c.close >= c.open;
-    const color = bull ? '#00e5a0' : '#ff4060';
-
-    ctx.strokeStyle = color; ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x, scaleY(c.hi));
-    ctx.lineTo(x, scaleY(c.lo));
-    ctx.stroke();
-
+    ctx.strokeStyle = bull ? '#00e5a0' : '#ff4060'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, scaleY(c.hi)); ctx.lineTo(x, scaleY(c.lo)); ctx.stroke();
     const oY = scaleY(c.open), cY = scaleY(c.close);
     ctx.fillStyle = bull ? 'rgba(0,229,160,0.8)' : 'rgba(255,64,96,0.8)';
-    ctx.fillRect(x-bodyW/2, Math.min(oY,cY), bodyW, Math.max(Math.abs(cY-oY),1));
+    ctx.fillRect(x - bodyW / 2, Math.min(oY, cY), bodyW, Math.max(Math.abs(cY - oY), 1));
   });
 
-  // Current price line
-  const lastClose = candles[candles.length-1].close;
-  const lineY = scaleY(lastClose);
-  ctx.setLineDash([4,4]);
-  ctx.strokeStyle='rgba(0,229,160,0.5)'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(PAD.left, lineY); ctx.lineTo(W-PAD.right, lineY); ctx.stroke();
+  const lastClose = candles[candles.length - 1].close;
+  const lineY     = scaleY(lastClose);
+  ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(0,229,160,0.5)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PAD.left, lineY); ctx.lineTo(W - PAD.right, lineY); ctx.stroke();
   ctx.setLineDash([]);
-
-  // Price label
-  ctx.fillStyle='#00e5a0';
-  ctx.fillRect(W-PAD.right, lineY-9, PAD.right, 18);
-  ctx.fillStyle='#080c12';
-  ctx.font='bold 10px JetBrains Mono';
-  ctx.fillText(lastClose.toFixed(0), W-PAD.right+4, lineY+4);
+  ctx.fillStyle = '#00e5a0';
+  ctx.fillRect(W - PAD.right, lineY - 9, PAD.right, 18);
+  ctx.fillStyle = '#080c12'; ctx.font = 'bold 10px JetBrains Mono';
+  ctx.fillText(lastClose.toFixed(0), W - PAD.right + 4, lineY + 4);
 }
 
 // ─── LIVE PRICE SIMULATION ────────────────────────────────────────
 let currentPrice = 67987;
 function updatePrice() {
-  const delta = (Math.random()-0.495)*120;
+  const delta  = (Math.random() - 0.495) * 120;
   currentPrice += delta;
-  const el = document.getElementById('livePrice');
-  const change = ((currentPrice-67700)/67700*100).toFixed(2);
-  const up = delta > 0;
-  el.textContent = '$' + currentPrice.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',');
-  el.classList.remove('flash-green','flash-red');
+  const el     = document.getElementById('livePrice');
+  const change = ((currentPrice - 67700) / 67700 * 100).toFixed(2);
+  el.textContent = '$' + currentPrice.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  el.classList.remove('flash-green', 'flash-red');
   void el.offsetWidth;
-  el.classList.add(up?'flash-green':'flash-red');
+  el.classList.add(delta > 0 ? 'flash-green' : 'flash-red');
   const chEl = document.getElementById('liveChange');
-  chEl.textContent = (change>=0?'+':'')+change+'%';
-  chEl.style.color = change>=0?'var(--green)':'var(--red)';
+  chEl.textContent  = (change >= 0 ? '+' : '') + change + '%';
+  chEl.style.color  = change >= 0 ? 'var(--green)' : 'var(--red)';
 }
 
 // ─── CLOCK ────────────────────────────────────────────────────────
 function updateClock() {
-  const now = new Date();
   document.getElementById('clock').textContent =
-    now.toUTCString().replace('GMT','UTC').substring(0,25);
+    new Date().toUTCString().replace('GMT', 'UTC').substring(0, 25);
 }
 
-// ─── LIVE NEWS INJECTION ──────────────────────────────────────────
-const LIVE_NEWS = [
-  { source:'Reuters', category:'macro', headline:'US Treasury Secretary confirms no new crypto taxes in proposed budget', coins:['BTC','ETH'], sentiment:'bull' },
-  { source:'CoinDesk', category:'defi', headline:'Aave V4 governance proposal passes with 94% approval', coins:['AAVE','ETH'], sentiment:'bull' },
-  { source:'The Block', category:'sec', headline:'DOJ charges three for $200M DeFi protocol exploit', coins:['ETH'], sentiment:'bear' },
-  { source:'Blockworks', category:'markets', headline:'CME Bitcoin futures open interest hits all-time high of $22B', coins:['BTC'], sentiment:'bull' },
+// ─── DEMO SEED DATA (visible immediately, replaced by live feed) ──
+const DEMO_NEWS = [
+  { sourceType:'ToA', sourceLabel:'Finance Feeds',   headline:'IoTeX Investigates Token Safe Breach After $4.3 Million Wallet Drain — IOTX down 12%', coins:['IOTX','SAFE'], sentiment:'bear', sentPct:91 },
+  { sourceType:'Tg',  sourceLabel:'@BWEnews',        headline:'X TO INTRODUCE DISCLOSURE FEATURES FOR PAID PROMOTIONS SUCH AS KALSHI & POLYMARKET ADS — NO DISCLOSURE RESULTS IN SUSPENSION: NIKITABIER', coins:[], sentiment:'neut', sentPct:50 },
+  { sourceType:'ToA', sourceLabel:'The Street',      headline:'Rich Dad Poor Dad buys Bitcoin again — Robert Kiyosaki doubles down on BTC amid macro uncertainty', coins:['BTC'], sentiment:'bull', sentPct:100 },
+  { sourceType:'ToA', sourceLabel:'Proposals',       headline:'ZEC: Proposal by shieldedmark — Zcash Engineering Office Hours #3: Quantum Recoverability', coins:['ZEC'], sentiment:'neut', sentPct:50 },
+  { sourceType:'ToA', sourceLabel:'Proposals',       headline:'CELO: GRANT PROPOSAL: MenoDAO — Bringing Dental Healthcare On-Chain for the 99% in Kenya', coins:['CELO'], sentiment:'neut', sentPct:50 },
+  { sourceType:'Tg',  sourceLabel:'@SolidIntelX',   headline:'BREAKING: SEC approves spot Ethereum ETF options trading — effective March 3rd, 2026', coins:['ETH'], sentiment:'bull', sentPct:100 },
+  { sourceType:'Tg',  sourceLabel:'@WalterBloomberg',headline:'Fed holds rates steady; Powell signals two cuts possible in H2 2026 — markets rally', coins:['BTC','ETH'], sentiment:'bull', sentPct:83 },
+  { sourceType:'ToA', sourceLabel:'CoinTelegraph',   headline:'BlackRock Bitcoin ETF hits record $18.2B AUM as institutional demand surges to all-time high', coins:['BTC','ETH'], sentiment:'bull', sentPct:100 },
+  { sourceType:'Tg',  sourceLabel:'@Whale_Alert',   headline:'🚨 1,200 #BTC (81,440,000 USD) transferred from unknown wallet to #Binance', coins:['BTC'], sentiment:'bear', sentPct:80 },
+  { sourceType:'Tg',  sourceLabel:'@FinanceFeeds',  headline:'CryptoQuant: Whale deposit activity grows amid ongoing bear phase — selling pressure mounting on BTC', coins:['BTC'], sentiment:'bear', sentPct:100 },
+  { sourceType:'ToA', sourceLabel:'Blockworks',     headline:'Solana DEX volume surpasses Ethereum for third consecutive month — SOL ecosystem dominance grows', coins:['SOL','ETH'], sentiment:'bull', sentPct:80 },
+  { sourceType:'Tg',  sourceLabel:'@BWEnews',       headline:'Binance settles CFTC charges for $2.7B — CEO Changpeng Zhao steps down as part of agreement', coins:['BNB'], sentiment:'bear', sentPct:75 },
 ];
-let newsIdx = 0;
-function injectNews() {
-  if(newsIdx < LIVE_NEWS.length) {
-    const n = { ...LIVE_NEWS[newsIdx], id: Date.now(), age:'now', fresh:true };
-    NEWS_DATA.unshift(n);
-    if(NEWS_DATA.length > 12) NEWS_DATA.pop();
-    renderNews();
-    newsIdx++;
-    // Update sentiment randomly
-    const bull = 55 + Math.floor(Math.random()*20);
-    document.getElementById('sentBull').style.width = bull+'%';
-    document.getElementById('sentBear').style.width = (100-bull)+'%';
-    document.getElementById('sentBullPct').textContent = bull+'% Bull';
-    document.getElementById('sentBearPct').textContent = (100-bull)+'% Bear';
-  }
-}
+
+const now = Date.now();
+DEMO_NEWS.forEach((d, i) => {
+  liveNews.push({
+    id:          'demo-' + i,
+    sourceType:  d.sourceType,
+    sourceLabel: d.sourceLabel,
+    headline:    d.headline,
+    coins:       d.coins,
+    sentiment:   d.sentiment,
+    sentPct:     d.sentPct,
+    ts:          now - i * 4 * 60000,   // space 4 min apart
+    fresh:       i < 2,
+  });
+});
 
 // ─── INIT ─────────────────────────────────────────────────────────
+
 renderMarkets();
-renderNews();
+renderNews();       // shows loading state
 renderSignals();
 renderFlow();
 renderAlerts();
-renderTicker();
+updateTicker();
 drawChart();
 updateClock();
 
+// Start live feeds
+connectTreeOfAlpha();
+pollTelegram();
+setInterval(pollTelegram, 30000);   // re-poll Telegram every 30 s
+
 setInterval(updatePrice, 1500);
 setInterval(updateClock, 1000);
-setInterval(injectNews, 12000);
-setInterval(drawChart, 8000);
+setInterval(drawChart,   8000);
 
-// TF button toggle
+// TF buttons
 document.querySelectorAll('.tf-btn').forEach(btn => {
-  btn.addEventListener('click', function(){
-    document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
     this.classList.add('active');
     drawChart();
   });
 });
 
-// Redraw chart on resize
 window.addEventListener('resize', drawChart);
 
-// Market search filter
-document.querySelector('.search-input').addEventListener('input', function(){
+// Market search
+document.querySelector('.search-input').addEventListener('input', function () {
   const q = this.value.toLowerCase();
   document.querySelectorAll('.market-row').forEach(row => {
-    const sym = row.querySelector('.market-symbol').textContent.toLowerCase();
+    const sym  = row.querySelector('.market-symbol').textContent.toLowerCase();
     const name = row.querySelector('.market-name').textContent.toLowerCase();
-    row.style.display = (sym.includes(q)||name.includes(q)) ? '' : 'none';
+    row.style.display = (sym.includes(q) || name.includes(q)) ? '' : 'none';
   });
 });
 </script>
