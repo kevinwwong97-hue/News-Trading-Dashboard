@@ -1227,13 +1227,38 @@ function updateClock() {
     new Date().toUTCString().replace('GMT', 'UTC').substring(0, 25);
 }
 
-// ─── INIT ─────────────────────────────────────────────────────────
-// Seed loading placeholder so the panel isn't blank while feeds load
-liveNews.push({
-  id:'__loading__', sourceType:'', sourceLabel:'System',
-  headline:'Connecting to live feeds…', coins:[],
-  sentiment:'neut', sentPct:50, ts:Date.now(), fresh:false,
+// ─── DEMO SEED DATA (visible immediately, replaced by live feed) ──
+const DEMO_NEWS = [
+  { sourceType:'ToA', sourceLabel:'Finance Feeds',   headline:'IoTeX Investigates Token Safe Breach After $4.3 Million Wallet Drain — IOTX down 12%', coins:['IOTX','SAFE'], sentiment:'bear', sentPct:91 },
+  { sourceType:'Tg',  sourceLabel:'@BWEnews',        headline:'X TO INTRODUCE DISCLOSURE FEATURES FOR PAID PROMOTIONS SUCH AS KALSHI & POLYMARKET ADS — NO DISCLOSURE RESULTS IN SUSPENSION: NIKITABIER', coins:[], sentiment:'neut', sentPct:50 },
+  { sourceType:'ToA', sourceLabel:'The Street',      headline:'Rich Dad Poor Dad buys Bitcoin again — Robert Kiyosaki doubles down on BTC amid macro uncertainty', coins:['BTC'], sentiment:'bull', sentPct:100 },
+  { sourceType:'ToA', sourceLabel:'Proposals',       headline:'ZEC: Proposal by shieldedmark — Zcash Engineering Office Hours #3: Quantum Recoverability', coins:['ZEC'], sentiment:'neut', sentPct:50 },
+  { sourceType:'ToA', sourceLabel:'Proposals',       headline:'CELO: GRANT PROPOSAL: MenoDAO — Bringing Dental Healthcare On-Chain for the 99% in Kenya', coins:['CELO'], sentiment:'neut', sentPct:50 },
+  { sourceType:'Tg',  sourceLabel:'@SolidIntelX',   headline:'BREAKING: SEC approves spot Ethereum ETF options trading — effective March 3rd, 2026', coins:['ETH'], sentiment:'bull', sentPct:100 },
+  { sourceType:'Tg',  sourceLabel:'@WalterBloomberg',headline:'Fed holds rates steady; Powell signals two cuts possible in H2 2026 — markets rally', coins:['BTC','ETH'], sentiment:'bull', sentPct:83 },
+  { sourceType:'ToA', sourceLabel:'CoinTelegraph',   headline:'BlackRock Bitcoin ETF hits record $18.2B AUM as institutional demand surges to all-time high', coins:['BTC','ETH'], sentiment:'bull', sentPct:100 },
+  { sourceType:'Tg',  sourceLabel:'@Whale_Alert',   headline:'🚨 1,200 #BTC (81,440,000 USD) transferred from unknown wallet to #Binance', coins:['BTC'], sentiment:'bear', sentPct:80 },
+  { sourceType:'Tg',  sourceLabel:'@FinanceFeeds',  headline:'CryptoQuant: Whale deposit activity grows amid ongoing bear phase — selling pressure mounting on BTC', coins:['BTC'], sentiment:'bear', sentPct:100 },
+  { sourceType:'ToA', sourceLabel:'Blockworks',     headline:'Solana DEX volume surpasses Ethereum for third consecutive month — SOL ecosystem dominance grows', coins:['SOL','ETH'], sentiment:'bull', sentPct:80 },
+  { sourceType:'Tg',  sourceLabel:'@BWEnews',       headline:'Binance settles CFTC charges for $2.7B — CEO Changpeng Zhao steps down as part of agreement', coins:['BNB'], sentiment:'bear', sentPct:75 },
+];
+
+const now = Date.now();
+DEMO_NEWS.forEach((d, i) => {
+  liveNews.push({
+    id:          'demo-' + i,
+    sourceType:  d.sourceType,
+    sourceLabel: d.sourceLabel,
+    headline:    d.headline,
+    coins:       d.coins,
+    sentiment:   d.sentiment,
+    sentPct:     d.sentPct,
+    ts:          now - i * 4 * 60000,   // space 4 min apart
+    fresh:       i < 2,
+  });
 });
+
+// ─── INIT ─────────────────────────────────────────────────────────
 
 renderMarkets();
 renderNews();       // shows loading state
