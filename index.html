@@ -1229,13 +1229,21 @@ function setPrice(price, changePct) {
   }
 }
 
-// Binance Futures WebSocket – real-time price (aggTrade ~every trade)
+// Binance Futures markPrice WebSocket – price + funding rate every 3 s
 let btcWs = null;
 function connectBtcPrice() {
-  try { btcWs = new WebSocket('wss://fstream.binance.com/ws/btcusdt@aggTrade'); }
+  try { btcWs = new WebSocket('wss://fstream.binance.com/ws/btcusdt@markPrice'); }
   catch (e) { setTimeout(connectBtcPrice, 5000); return; }
   btcWs.onmessage = (evt) => {
-    try { setPrice(parseFloat(JSON.parse(evt.data).p)); } catch (_) {}
+    try {
+      const d = JSON.parse(evt.data);
+      setPrice(parseFloat(d.p));
+      // Update funding rate live from the same stream
+      const rate = parseFloat(d.r) * 100;
+      const el   = document.getElementById('stat-funding');
+      el.textContent = (rate >= 0 ? '+' : '') + rate.toFixed(4) + '%';
+      el.className   = 'stat-value ' + (rate >= 0 ? 'green' : 'red');
+    } catch (_) {}
   };
   btcWs.onclose = () => setTimeout(connectBtcPrice, 3000);
   btcWs.onerror = () => {};
@@ -1244,9 +1252,8 @@ function connectBtcPrice() {
 // REST poll for all other stats (30 s interval)
 async function fetchTopbarStats() {
   try {
-    const [ticker, premium, oi, fng] = await Promise.allSettled([
+    const [ticker, oi, fng] = await Promise.allSettled([
       fetch('https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=BTCUSDT').then(r => r.json()),
-      fetch('https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT').then(r => r.json()),
       fetch('https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT').then(r => r.json()),
       fetch('https://api.alternative.me/fng/?limit=1').then(r => r.json()),
     ]);
@@ -1264,13 +1271,6 @@ async function fetchTopbarStats() {
         document.getElementById('stat-oi').textContent =
           fmtBig(parseFloat(oi.value.openInterest) * price);
       }
-    }
-
-    if (premium.status === 'fulfilled') {
-      const rate = parseFloat(premium.value.lastFundingRate) * 100;
-      const el   = document.getElementById('stat-funding');
-      el.textContent = (rate >= 0 ? '+' : '') + rate.toFixed(4) + '%';
-      el.className   = 'stat-value ' + (rate >= 0 ? 'green' : 'red');
     }
 
     if (fng.status === 'fulfilled') {
