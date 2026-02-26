@@ -207,32 +207,6 @@
 
   canvas#chart { position: absolute; inset: 0; }
 
-  .chart-overlay {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    display: flex;
-    flex-direction: column;
-    padding: 10px 14px;
-  }
-
-  .chart-info-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .ohlc {
-    display: flex;
-    gap: 10px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-  }
-  .ohlc-item { display: flex; gap: 3px; }
-  .ohlc-label { color: var(--text-muted); }
-  .ohlc-val { color: var(--text-secondary); }
-  .ohlc-val.up { color: var(--green); }
-  .ohlc-val.down { color: var(--red); }
-
   /* NEWS TICKER */
   .news-ticker {
     border-top: 1px solid var(--border);
@@ -634,17 +608,6 @@
     <!-- Chart -->
     <div class="chart-area" style="flex:1; min-height:0;">
       <canvas id="chart"></canvas>
-      <div class="chart-overlay">
-        <div class="chart-info-bar">
-          <div class="ohlc">
-            <div class="ohlc-item"><span class="ohlc-label">O</span><span class="ohlc-val">67,842</span></div>
-            <div class="ohlc-item"><span class="ohlc-label">H</span><span class="ohlc-val up">68,240</span></div>
-            <div class="ohlc-item"><span class="ohlc-label">L</span><span class="ohlc-val down">67,510</span></div>
-            <div class="ohlc-item"><span class="ohlc-label">C</span><span class="ohlc-val up">67,987</span></div>
-            <div class="ohlc-item"><span class="ohlc-label">Vol</span><span class="ohlc-val">44.55M</span></div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- Ticker -->
