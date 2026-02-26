@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CryptoFlow — News Trading Terminal</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://s3.tradingview.com/tv.js"></script>
 <style>
   :root {
     --bg-primary: #080c12;
@@ -205,7 +206,7 @@
     min-height: 0;
   }
 
-  canvas#chart { position: absolute; inset: 0; }
+  #tv_chart_container { width: 100%; height: 100%; }
 
   /* NEWS TICKER */
   .news-ticker {
@@ -560,8 +561,8 @@
   <div class="logo"><div class="logo-dot"></div>CRYPTOFLOW</div>
 
   <div class="pair-selector">
-    <span class="pair-name">BTC/USDT</span>
-    <span class="pair-tag">PERP</span>
+    <span id="pairName" class="pair-name">BTC/USDT</span>
+    <span id="pairTag" class="pair-tag">PERP</span>
   </div>
 
   <div id="livePrice" class="pair-price">$67,987</div>
@@ -607,7 +608,7 @@
 
     <!-- Chart -->
     <div class="chart-area" style="flex:1; min-height:0;">
-      <canvas id="chart"></canvas>
+      <div id="tv_chart_container"></div>
     </div>
 
     <!-- Ticker -->
@@ -1047,9 +1048,10 @@ function renderMarkets() {
       <div class="market-change ${m.change>=0?'pos':'neg'}">${m.change>=0?'+':''}${m.change}%</div>
     </div>`).join('');
 }
-function selectMarket(el) {
+function selectMarket(el, sym) {
   document.querySelectorAll('.market-row').forEach(r => r.classList.remove('active'));
   el.classList.add('active');
+  switchSymbol(sym);
 }
 
 // ─── RENDER SIGNALS ───────────────────────────────────────────────
@@ -1099,73 +1101,66 @@ function renderAlerts() {
     </div>`).join('');
 }
 
-// ─── CHART (CANVAS) ───────────────────────────────────────────────
-function drawChart() {
-  const canvas = document.getElementById('chart');
-  const area   = canvas.parentElement;
-  canvas.width  = area.clientWidth;
-  canvas.height = area.clientHeight;
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  const PAD = { top:40, right:70, bottom:30, left:10 };
+// ─── TRADINGVIEW WIDGET + SYMBOL STATE ────────────────────────────
+const TF_MAP = { '1m':'1', '5m':'5', '1h':'60', '4h':'240', '1D':'D' };
+let currentSym = 'BTC';
+let currentTf  = '60';
+let tvWidget   = null;
 
-  const N = 80, candles = [];
-  let price = 67000;
-  for (let i = 0; i < N; i++) {
-    const open   = price;
-    const change = (Math.random() - 0.48) * 800;
-    const close  = open + change;
-    candles.push({ open, close,
-      hi: Math.max(open,close) + Math.random()*300,
-      lo: Math.min(open,close) - Math.random()*300,
-      vol: Math.random()*100+20 });
-    price = close;
-  }
-
-  const prices = candles.flatMap(c => [c.hi, c.lo]);
-  const minP   = Math.min(...prices) * 0.999;
-  const maxP   = Math.max(...prices) * 1.001;
-  const scaleY = p => PAD.top + (1 - (p - minP) / (maxP - minP)) * (H - PAD.top - PAD.bottom);
-  const cW     = (W - PAD.left - PAD.right) / N;
-  const bodyW  = Math.max(cW * 0.6, 2);
-
-  ctx.strokeStyle = 'rgba(30,45,66,0.6)'; ctx.lineWidth = 1;
-  for (let i = 0; i < 6; i++) {
-    const y = PAD.top + i * (H - PAD.top - PAD.bottom) / 5;
-    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
-    ctx.fillStyle = 'rgba(122,148,176,0.6)';
-    ctx.font = '10px JetBrains Mono';
-    ctx.fillText((maxP - i * (maxP - minP) / 5).toFixed(0), W - PAD.right + 6, y + 4);
-  }
-
-  const volMax = Math.max(...candles.map(c => c.vol));
-  const volH   = (H - PAD.top - PAD.bottom) * 0.15;
-  candles.forEach((c, i) => {
-    const x  = PAD.left + i * cW;
-    const bH = (c.vol / volMax) * volH;
-    ctx.fillStyle = c.close >= c.open ? 'rgba(0,229,160,0.25)' : 'rgba(255,64,96,0.25)';
-    ctx.fillRect(x + cW * 0.1, H - PAD.bottom - bH, cW * 0.8, bH);
+function initTradingView(sym, tf) {
+  document.getElementById('tv_chart_container').innerHTML = '';
+  tvWidget = new TradingView.widget({
+    autosize:            true,
+    symbol:              `BINANCE:${sym}USDT.P`,
+    interval:            tf || '60',
+    container_id:        'tv_chart_container',
+    theme:               'dark',
+    style:               '1',
+    locale:              'en',
+    toolbar_bg:          '#0d1420',
+    enable_publishing:   false,
+    allow_symbol_change: true,
+    hide_side_toolbar:   false,
+    backgroundColor:     '#080c12',
+    gridColor:           'rgba(30,45,66,0.5)',
+    save_image:          false,
   });
+  // Detect symbol changes the user makes inside TradingView
+  if (tvWidget.onChartReady) {
+    tvWidget.onChartReady(() => {
+      try {
+        tvWidget.activeChart().onSymbolChanged().subscribe(null, () => {
+          const tvSym = tvWidget.activeChart().symbol(); // e.g. "BINANCE:ETHUSDT.P"
+          const match = tvSym.match(/BINANCE:([A-Z]+)USDT/);
+          if (match) syncTopbarToSym(match[1]);
+        });
+      } catch (_) {}
+    });
+  }
+}
 
-  candles.forEach((c, i) => {
-    const x    = PAD.left + i * cW + cW / 2;
-    const bull = c.close >= c.open;
-    ctx.strokeStyle = bull ? '#00e5a0' : '#ff4060'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x, scaleY(c.hi)); ctx.lineTo(x, scaleY(c.lo)); ctx.stroke();
-    const oY = scaleY(c.open), cY = scaleY(c.close);
-    ctx.fillStyle = bull ? 'rgba(0,229,160,0.8)' : 'rgba(255,64,96,0.8)';
-    ctx.fillRect(x - bodyW / 2, Math.min(oY, cY), bodyW, Math.max(Math.abs(cY - oY), 1));
+// Update topbar label + reconnect Binance feeds — does NOT touch TV widget
+function syncTopbarToSym(sym) {
+  if (sym === currentSym) return;
+  currentSym = sym;
+  _lastPrice = null;
+  document.getElementById('pairName').textContent = sym + '/USDT';
+  ['stat-vol','stat-mktcap','stat-funding','stat-oi'].forEach(id => {
+    document.getElementById(id).textContent = '—';
+    document.getElementById(id).className   = 'stat-value';
   });
+  if (priceWs) { priceWs.onclose = () => {}; priceWs.close(); priceWs = null; }
+  connectBtcPrice();
+  fetchTopbarStats();
+}
 
-  const lastClose = candles[candles.length - 1].close;
-  const lineY     = scaleY(lastClose);
-  ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(0,229,160,0.5)'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(PAD.left, lineY); ctx.lineTo(W - PAD.right, lineY); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = '#00e5a0';
-  ctx.fillRect(W - PAD.right, lineY - 9, PAD.right, 18);
-  ctx.fillStyle = '#080c12'; ctx.font = 'bold 10px JetBrains Mono';
-  ctx.fillText(lastClose.toFixed(0), W - PAD.right + 4, lineY + 4);
+// Full switch: update TV chart + topbar
+function switchSymbol(sym) {
+  syncTopbarToSym(sym);
+  if (tvWidget) {
+    try { tvWidget.setSymbol(`BINANCE:${sym}USDT.P`, currentTf, () => {}); }
+    catch (_) { initTradingView(sym, currentTf); }
+  }
 }
 
 // ─── TOPBAR LIVE STATS (Binance Futures + alternative.me) ─────────
@@ -1193,31 +1188,32 @@ function setPrice(price, changePct) {
 }
 
 // Binance Futures markPrice WebSocket – price + funding rate every 3 s
-let btcWs = null;
+let priceWs = null;
 function connectBtcPrice() {
-  try { btcWs = new WebSocket('wss://fstream.binance.com/ws/btcusdt@markPrice'); }
+  const stream = currentSym.toLowerCase() + 'usdt@markPrice';
+  try { priceWs = new WebSocket(`wss://fstream.binance.com/ws/${stream}`); }
   catch (e) { setTimeout(connectBtcPrice, 5000); return; }
-  btcWs.onmessage = (evt) => {
+  priceWs.onmessage = (evt) => {
     try {
       const d = JSON.parse(evt.data);
       setPrice(parseFloat(d.p));
-      // Update funding rate live from the same stream
       const rate = parseFloat(d.r) * 100;
       const el   = document.getElementById('stat-funding');
       el.textContent = (rate >= 0 ? '+' : '') + rate.toFixed(4) + '%';
       el.className   = 'stat-value ' + (rate >= 0 ? 'green' : 'red');
     } catch (_) {}
   };
-  btcWs.onclose = () => setTimeout(connectBtcPrice, 3000);
-  btcWs.onerror = () => {};
+  priceWs.onclose = () => { if (priceWs) setTimeout(connectBtcPrice, 3000); };
+  priceWs.onerror = () => {};
 }
 
 // REST poll for all other stats (30 s interval)
 async function fetchTopbarStats() {
+  const sym = currentSym + 'USDT';
   try {
     const [ticker, oi, fng] = await Promise.allSettled([
-      fetch('https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=BTCUSDT').then(r => r.json()),
-      fetch('https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT').then(r => r.json()),
+      fetch(`https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=${sym}`).then(r => r.json()),
+      fetch(`https://fapi.binance.com/fapi/v1/openInterest?symbol=${sym}`).then(r => r.json()),
       fetch('https://api.alternative.me/fng/?limit=1').then(r => r.json()),
     ]);
 
@@ -1228,8 +1224,9 @@ async function fetchTopbarStats() {
       const vol    = parseFloat(d.quoteVolume);
       setPrice(price, change);
       document.getElementById('stat-vol').textContent = fmtBig(vol);
-      // Approx market cap: price × BTC circulating supply (~19.87 M)
-      document.getElementById('stat-mktcap').textContent = fmtBig(price * 19_870_000);
+      // Approx market cap only makes sense for BTC; hide for others
+      document.getElementById('stat-mktcap').textContent =
+        currentSym === 'BTC' ? fmtBig(price * 19_870_000) : '—';
       if (oi.status === 'fulfilled') {
         document.getElementById('stat-oi').textContent =
           fmtBig(parseFloat(oi.value.openInterest) * price);
@@ -1287,18 +1284,20 @@ DEMO_NEWS.forEach((d, i) => {
 // ─── INIT ─────────────────────────────────────────────────────────
 
 renderMarkets();
-renderNews();       // shows loading state
+renderNews();
 renderSignals();
 renderFlow();
 renderAlerts();
 updateTicker();
-drawChart();
 updateClock();
+
+// TradingView chart
+initTradingView(currentSym, currentTf);
 
 // Start live feeds
 connectTreeOfAlpha();
 pollTelegram();
-setInterval(pollTelegram, 30000);   // re-poll Telegram every 30 s
+setInterval(pollTelegram, 30000);
 
 // Live price via Binance Futures WebSocket; stats polled every 30 s
 connectBtcPrice();
@@ -1306,18 +1305,16 @@ fetchTopbarStats();
 setInterval(fetchTopbarStats, 30000);
 
 setInterval(updateClock, 1000);
-setInterval(drawChart,   8000);
 
-// TF buttons
+// TF buttons → update TradingView interval
 document.querySelectorAll('.tf-btn').forEach(btn => {
   btn.addEventListener('click', function () {
     document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
     this.classList.add('active');
-    drawChart();
+    currentTf = TF_MAP[this.textContent] || '60';
+    initTradingView(currentSym, currentTf);
   });
 });
-
-window.addEventListener('resize', drawChart);
 
 // Market search
 document.querySelector('.search-input').addEventListener('input', function () {
