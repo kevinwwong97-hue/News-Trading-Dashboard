@@ -206,7 +206,8 @@
     min-height: 0;
   }
 
-  #tv_chart_container { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #tv_chart_container { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; }
+  #tv_chart_container iframe { display: block; width: 100% !important; height: 100% !important; max-width: 100%; max-height: 100%; }
 
   /* NEWS TICKER */
   .news-ticker {
@@ -1212,14 +1213,8 @@ let tvWidget   = null;
 function initTradingView(sym, tf) {
   const el = document.getElementById('tv_chart_container');
   el.innerHTML = '';
-  // Measure the chart-area container so TradingView fills it exactly
-  const area = el.closest('.chart-area') || el.parentElement;
-  const w = area.clientWidth  || 800;
-  const h = area.clientHeight || 500;
   tvWidget = new TradingView.widget({
-    autosize:            false,
-    width:               w,
-    height:              h,
+    autosize:            true,
     symbol:              `BINANCE:${sym}USDT.P`,
     interval:            tf || '60',
     container_id:        'tv_chart_container',
@@ -1427,13 +1422,6 @@ updateClock();
 
 // TradingView chart
 initTradingView(currentSym, currentTf);
-
-// Re-fit chart on window resize
-let _tvResizeTimer = null;
-window.addEventListener('resize', () => {
-  clearTimeout(_tvResizeTimer);
-  _tvResizeTimer = setTimeout(() => initTradingView(currentSym, currentTf), 300);
-});
 
 // Start live feeds
 connectTreeOfAlpha();
